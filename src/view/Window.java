@@ -435,11 +435,14 @@ public final class Window extends javax.swing.JFrame {
 
     public void updateLabels() {
         Vector2 v = circle.getLinearVelocity();
-        Vector2 p = circle.getLocalPoint(v);
-        this.jLabel12.setText("" + p.x);
-        this.jLabel13.setText("" + p.y);
-        this.jLabel8.setText("" + v.x);
-        this.jLabel9.setText("" + v.y);
+
+        this.jLabel8.setText("" + (float) v.x);
+        this.jLabel9.setText("" + (float) v.y);
+
+        Vector2 a = new Vector2(0.0,0.0);
+        Vector2 p = circle.getLocalPoint(a);
+        this.jLabel12.setText("" + (float) p.x);
+        this.jLabel13.setText("" + (float) p.y);
         //System.out.println();
     }
 
