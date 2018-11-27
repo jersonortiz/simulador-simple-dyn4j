@@ -5,146 +5,77 @@
  */
 package view;
 
-import java.awt.Canvas;
 import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.awt.Point;
 import java.awt.Toolkit;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferStrategy;
-
-import javax.swing.JFrame;
-import javax.swing.UIManager;
-import javax.swing.UnsupportedLookAndFeelException;
-import model.util.Graphics2DRenderer;
-
-import org.dyn4j.dynamics.Body;
+import model.util.GameObject;
 import org.dyn4j.dynamics.BodyFixture;
 import org.dyn4j.dynamics.World;
-import org.dyn4j.geometry.Capsule;
 import org.dyn4j.geometry.Circle;
-import org.dyn4j.geometry.Convex;
 import org.dyn4j.geometry.Geometry;
 import org.dyn4j.geometry.MassType;
 import org.dyn4j.geometry.Mass;
-import org.dyn4j.geometry.Polygon;
 import org.dyn4j.geometry.Rectangle;
-import org.dyn4j.geometry.Slice;
-import org.dyn4j.geometry.Triangle;
 import org.dyn4j.geometry.Vector2;
 
 /**
  *
  * @author jerson
  */
-public class Window extends javax.swing.JFrame {
+public final class Window extends javax.swing.JFrame {
 
     private static final long serialVersionUID = 5663760293144882635L;
-
-    /**
-     * The scale 45 pixels per meter
-     */
     public static final double SCALE = 45.0;
-
-    /**
-     * The conversion factor from nano to base
-     */
     public static final double NANO_TO_BASE = 1.0e9;
-
     private GameObject circle;
+    protected World world;
+    protected boolean stopped;
+    protected long last;
+    private Point point;
 
-    public static class GameObject extends Body {
+    private final class CustomMouseAdapter extends MouseAdapter {
 
-        /**
-         * The color of the object
-         */
-        protected Color color;
-
-        /**
-         * Default constructor.
-         */
-        public GameObject() {
-            // randomly generate the color
-            this.color = new Color(
-                    (float) Math.random() * 0.5f + 0.5f,
-                    (float) Math.random() * 0.5f + 0.5f,
-                    (float) Math.random() * 0.5f + 0.5f);
+        @Override
+        public void mousePressed(MouseEvent e) {
+            point = new Point(e.getX(), e.getY());
         }
 
-        /**
-         * Draws the body.
-         * <p>
-         * Only coded for polygons and circles.
-         *
-         * @param g the graphics object to render to
-         */
-        public void render(Graphics2D g) {
-            // save the original transform
-            AffineTransform ot = g.getTransform();
-
-            // transform the coordinate system from world coordinates to local coordinates
-            AffineTransform lt = new AffineTransform();
-            lt.translate(this.transform.getTranslationX() * SCALE, this.transform.getTranslationY() * SCALE);
-            lt.rotate(this.transform.getRotation());
-
-            // apply the transform
-            g.transform(lt);
-
-            // loop over all the body fixtures for this body
-            for (BodyFixture fixture : this.fixtures) {
-                // get the shape on the fixture
-                Convex convex = fixture.getShape();
-                Graphics2DRenderer.render(g, convex, SCALE, color);
-            }
-
-            // set the original transform
-            g.setTransform(ot);
+        @Override
+        public void mouseReleased(MouseEvent e) {
+            point = null;
         }
     }
 
-    /**
-     * The canvas to draw to
-     */
-    /**
-     * The dynamics engine
-     */
-    protected World world;
-
-    /**
-     * Wether the example is stopped or not
-     */
-    protected boolean stopped;
-
-    /**
-     * The time stamp for the last iteration
-     */
-    protected long last;
-
-    /**
-     * Creates new form Window
-     */
     public Window() {
         initComponents();
+
+        MouseAdapter ml = new CustomMouseAdapter();
+        this.canvas1.addMouseMotionListener(ml);
+        this.canvas1.addMouseWheelListener(ml);
+        this.canvas1.addMouseListener(ml);
+
         this.initializeWorld();
+
     }
 
     protected void initializeWorld() {
-        // create the world
+
         this.world = new World();
         this.world.setGravity(World.EARTH_GRAVITY);
-        // create all your bodies/joints
-        // create the floor
+
         Rectangle floorRect = new Rectangle(15.0, 1.0);
         GameObject floor = new GameObject();
         floor.addFixture(new BodyFixture(floorRect));
         floor.setMass(MassType.INFINITE);
-        // move the floor down a bit
+
         floor.translate(0.0, -2.0);
         this.world.addBody(floor);
 
-        // create a circle
         Circle cirShape = new Circle(0.5);
         this.circle = new GameObject();
         circle.addFixture(cirShape);
@@ -166,80 +97,44 @@ public class Window extends javax.swing.JFrame {
     }
 
     public void start() {
-        // initialize the last update time
+        this.stopped = false;
+
         this.last = System.nanoTime();
-        // don't allow AWT to paint the canvas since we are
         this.canvas1.setIgnoreRepaint(true);
-        // enable double buffering (the JFrame has to be
-        // visible before this can be done)
         this.canvas1.createBufferStrategy(2);
-        // run a separate thread to do active rendering
-        // because we don't want to do it on the EDT
         Thread thread = new Thread() {
             public void run() {
-                // perform an infinite loop stopped
-                // render as fast as possible
                 while (!isStopped()) {
                     gameLoop();
-                    // you could add a Thread.yield(); or
-                    // Thread.sleep(long) here to give the
-                    // CPU some breathing room
+
                 }
             }
         };
-        // set the game loop thread to a daemon thread so that
-        // it cannot stop the JVM from exiting
         thread.setDaemon(true);
-        // start the game loop
         thread.start();
     }
 
     protected void gameLoop() {
-        // get the graphics object to render to
-        Graphics2D g = (Graphics2D) this.canvas1.getBufferStrategy().getDrawGraphics();
 
-        // before we render everything im going to flip the y axis and move the
-        // origin to the center (instead of it being in the top left corner)
-        //  AffineTransform yFlip = AffineTransform.getScaleInstance(1,-1);
-        //  AffineTransform move = AffineTransform.getTranslateInstance(400, -300);
-        // g.transform(yFlip);
-        //g.transform(move);
+        Graphics2D g = (Graphics2D) this.canvas1.getBufferStrategy().getDrawGraphics();
         this.transform(g);
         this.clear(g);
-
-        // before we render everything im going to flip the y axis and move the
-        // origin to the center (instead of it being in the top left corner)
-        // now (0, 0) is in the center of the screen with the positive x axis
-        // pointing right and the positive y axis pointing up
-        // render anything about the Example (will render the World objects)
         this.render(g);
-
-        // blit/flip the buffer
         BufferStrategy strategy = this.canvas1.getBufferStrategy();
+
         if (!strategy.contentsLost()) {
             strategy.show();
         }
 
-        // Sync the display on some systems.
-        // (on Linux, this fixes event queue problems)
         Toolkit.getDefaultToolkit().sync();
-
-        // update the World
-        // get the current time
         long time = System.nanoTime();
-        // get the elapsed time from the last iteration
         long diff = time - this.last;
-        // set the last time
         this.last = time;
-        // convert from nanoseconds to seconds
         double elapsedTime = diff / NANO_TO_BASE;
-        // update the world with the elapsed time
+
         if (!this.stopped) {
-            // update the World
             this.update(g, elapsedTime);
         }
-
-        // dispose of the graphics object
         g.dispose();
 
     }
@@ -247,9 +142,6 @@ public class Window extends javax.swing.JFrame {
     protected void transform(Graphics2D g) {
         final int w = this.canvas1.getWidth();
         final int h = this.canvas1.getHeight();
-
-        // before we render everything im going to flip the y axis and move the
-        // origin to the center (instead of it being in the top left corner)
         AffineTransform yFlip = AffineTransform.getScaleInstance(1, -1);
         AffineTransform move = AffineTransform.getTranslateInstance(w / 2, -h / 2);
         g.transform(yFlip);
@@ -259,65 +151,48 @@ public class Window extends javax.swing.JFrame {
     protected void clear(Graphics2D g) {
         final int w = this.canvas1.getWidth();
         final int h = this.canvas1.getHeight();
-
-        // lets draw over everything with a white background
         g.setColor(Color.WHITE);
         g.fillRect(-w / 2, -h / 2, w, h);
     }
 
     protected void update(Graphics2D g, double elapsedTime) {
-        // update the world with the elapsed time
+
         double mass = circle.getMass().getMass();
-        //  final double scale = Window.SCALE;
         final double force = 9.8 * mass;
-
         final Vector2 rr = new Vector2(0, force);
-        //  final Vector2 r = new Vector2(circle.getTransform().getRotation() + Math.PI * 0.5);
-        //  Vector2 f = rr.product(force);
 
-        circle.applyForce(rr);
-        Vector2 ff = circle.getForce();
-        // System.out.println("fx: "+ff.x+" fy: "+ff.y);
-        //          System.out.println("x: " +circle.getLinearVelocity().x +" y: "+circle.getLinearVelocity().y + "t: " +elapsedTime +" posx: " +circle.getChangeInPosition().x +" posy: "+circle.getChangeInPosition().y);
+        if (this.point != null) {
+            double x = (this.point.getX() - this.canvas1.getWidth() / 2.0) / this.SCALE;
+            double y = -(this.point.getY() - this.canvas1.getHeight() / 2.0) / this.SCALE;
+
+            GameObject no = new GameObject();
+            no.addFixture(Geometry.createSquare(0.5));
+            no.translate(x, y);
+            no.setMass(MassType.NORMAL);
+            this.world.addBody(no);
+            this.point = null;
+        }
 
         this.updateLabels();
         this.world.update(elapsedTime);
     }
 
-    /**
-     * Renders the example.
-     *
-     * @param g the graphics object to render to
-     */
     protected void render(Graphics2D g) {
-        // lets draw over everything with a white background
         g.setColor(Color.WHITE);
         g.fillRect(-400, -300, 800, 600);
 
-        // lets move the view up some
         g.translate(0.0, -1.0 * SCALE);
 
-        // draw all the objects in the world
         for (int i = 0; i < this.world.getBodyCount(); i++) {
-            // get the object
             GameObject go = (GameObject) this.world.getBody(i);
-            // draw the object
             go.render(g);
         }
     }
 
-    /**
-     * Stops the example.
-     */
     public synchronized void stop() {
         this.stopped = true;
     }
 
-    /**
-     * Returns true if the example is stopped.
-     *
-     * @return boolean true if stopped
-     */
     public synchronized boolean isStopped() {
         return this.stopped;
     }
@@ -365,6 +240,11 @@ public class Window extends javax.swing.JFrame {
         });
 
         jButton1.setText("Añadir objeto");
+        jButton1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton1ActionPerformed(evt);
+            }
+        });
 
         jComboBox1.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
 
@@ -404,8 +284,18 @@ public class Window extends javax.swing.JFrame {
         jLabel15.setText("0");
 
         jButton5.setText("Pausar/Reanudar");
+        jButton5.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton5ActionPerformed(evt);
+            }
+        });
 
         jButton6.setText("Reset");
+        jButton6.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton6ActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -418,19 +308,19 @@ public class Window extends javax.swing.JFrame {
                         .addComponent(canvas1, javax.swing.GroupLayout.PREFERRED_SIZE, 600, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                                .addComponent(jLabel5)
-                                .addGap(144, 144, 144))
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                            .addComponent(jLabel5)
+                            .addGroup(layout.createSequentialGroup()
                                 .addComponent(jLabel1)
-                                .addGap(44, 44, 44)
+                                .addGap(33, 33, 33)
                                 .addComponent(jComboBox1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                .addComponent(jButton1)
-                                .addComponent(jCheckBox1)
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                                        .addGap(6, 6, 6)
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                                .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(jButton1, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                            .addGroup(layout.createSequentialGroup()
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                                    .addComponent(jCheckBox1, javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
+                                        .addGap(7, 7, 7)
                                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                             .addComponent(jLabel6)
                                             .addComponent(jLabel7)
@@ -440,23 +330,22 @@ public class Window extends javax.swing.JFrame {
                                                 .addGap(1, 1, 1)
                                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                                     .addComponent(jLabel4)
-                                                    .addComponent(jLabel3))))
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                            .addComponent(jLabel9)
-                                            .addComponent(jLabel8)
-                                            .addComponent(jLabel12)
-                                            .addComponent(jLabel13)
-                                            .addComponent(jLabel14)
-                                            .addComponent(jLabel15)))
-                                    .addComponent(jLabel2, javax.swing.GroupLayout.Alignment.TRAILING)))))
+                                                    .addComponent(jLabel3))))))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                    .addComponent(jLabel9, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(jLabel12, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(jLabel13, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(jLabel14, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(jLabel15, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(jLabel8, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))))
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(jButton2)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jButton5)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jButton6)))
-                .addContainerGap(149, Short.MAX_VALUE))
+                .addContainerGap(130, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -523,19 +412,35 @@ public class Window extends javax.swing.JFrame {
     }//GEN-LAST:event_jCheckBox1ActionPerformed
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
-        // TODO add your handling code here:
+        this.start();
     }//GEN-LAST:event_jButton2ActionPerformed
+
+    private void jButton5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton5ActionPerformed
+        if (this.isStopped()) {
+            this.start();
+        } else {
+            this.stop();
+        }
+    }//GEN-LAST:event_jButton5ActionPerformed
+
+    private void jButton6ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton6ActionPerformed
+        this.stop();
+        this.initializeWorld();
+        this.start();
+    }//GEN-LAST:event_jButton6ActionPerformed
+
+    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_jButton1ActionPerformed
 
     public void updateLabels() {
         Vector2 v = circle.getLinearVelocity();
         Vector2 p = circle.getLocalPoint(v);
-//Vector2 a = circle.
         this.jLabel12.setText("" + p.x);
         this.jLabel13.setText("" + p.y);
-
         this.jLabel8.setText("" + v.x);
         this.jLabel9.setText("" + v.y);
-        System.out.println();
+        //System.out.println();
     }
 
     /**
