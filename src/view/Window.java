@@ -55,13 +55,6 @@ public class Window extends javax.swing.JFrame {
 
     private GameObject circle;
 
-    /**
-     * Custom Body class to add drawing functionality.
-     *
-     * @author William Bittle
-     * @version 3.0.2
-     * @since 3.0.0
-     */
     public static class GameObject extends Body {
 
         /**
@@ -140,7 +133,7 @@ public class Window extends javax.swing.JFrame {
     protected void initializeWorld() {
         // create the world
         this.world = new World();
-      this.world.setGravity(World.EARTH_GRAVITY);
+        this.world.setGravity(World.EARTH_GRAVITY);
         // create all your bodies/joints
         // create the floor
         Rectangle floorRect = new Rectangle(15.0, 1.0);
@@ -163,9 +156,9 @@ public class Window extends javax.swing.JFrame {
         circle.setMass(m);
         System.out.println(circle.getMass().getMass());
 
-        //  circle.setLinearVelocity(,0);
+        //  circle.setLinearVelocity(new Vector2(5, 4.8));
         // test adding some force
-          circle.applyForce(new Vector2(0, 9.8));
+        //   circle.applyForce(new Vector2(0.0, 9.8));
         // set some linear damping to simulate rolling friction
         // circle.setLinearDamping(0.05);
         this.world.addBody(circle);
@@ -221,9 +214,6 @@ public class Window extends javax.swing.JFrame {
         // render anything about the Example (will render the World objects)
         this.render(g);
 
-        // dispose of the graphics object
-        g.dispose();
-
         // blit/flip the buffer
         BufferStrategy strategy = this.canvas1.getBufferStrategy();
         if (!strategy.contentsLost()) {
@@ -248,6 +238,9 @@ public class Window extends javax.swing.JFrame {
             // update the World
             this.update(g, elapsedTime);
         }
+
+        // dispose of the graphics object
+        g.dispose();
 
     }
 
@@ -274,21 +267,21 @@ public class Window extends javax.swing.JFrame {
 
     protected void update(Graphics2D g, double elapsedTime) {
         // update the world with the elapsed time
-        this.world.update(elapsedTime);
+        double mass = circle.getMass().getMass();
+        //  final double scale = Window.SCALE;
+        final double force = 9.8 * mass;
 
-        final double scale = Window.SCALE;
-        final double force = 3.0;
-
-        final Vector2 rr = new Vector2(0, 9.8);
+        final Vector2 rr = new Vector2(0, force);
         //  final Vector2 r = new Vector2(circle.getTransform().getRotation() + Math.PI * 0.5);
-      //  Vector2 f = rr.product(force);
+        //  Vector2 f = rr.product(force);
 
         circle.applyForce(rr);
         Vector2 ff = circle.getForce();
         // System.out.println("fx: "+ff.x+" fy: "+ff.y);
         //          System.out.println("x: " +circle.getLinearVelocity().x +" y: "+circle.getLinearVelocity().y + "t: " +elapsedTime +" posx: " +circle.getChangeInPosition().x +" posy: "+circle.getChangeInPosition().y);
-   
-    this.updateLabels();
+
+        this.updateLabels();
+        this.world.update(elapsedTime);
     }
 
     /**
@@ -353,8 +346,16 @@ public class Window extends javax.swing.JFrame {
         jLabel9 = new javax.swing.JLabel();
         jLabel10 = new javax.swing.JLabel();
         jLabel11 = new javax.swing.JLabel();
+        jButton2 = new javax.swing.JButton();
+        jLabel12 = new javax.swing.JLabel();
+        jLabel13 = new javax.swing.JLabel();
+        jLabel14 = new javax.swing.JLabel();
+        jLabel15 = new javax.swing.JLabel();
+        jButton5 = new javax.swing.JButton();
+        jButton6 = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setResizable(false);
 
         jCheckBox1.setText("Activar Gravedad");
         jCheckBox1.addActionListener(new java.awt.event.ActionListener() {
@@ -369,23 +370,42 @@ public class Window extends javax.swing.JFrame {
 
         jLabel1.setText("Escala");
 
-        jLabel2.setText("jLabel2");
+        jLabel2.setText("Objeto seleccionado");
 
-        jLabel3.setText("Velocidad eje x");
+        jLabel3.setText("Velocidad eje x: ");
 
-        jLabel4.setText("Velocidad eje y");
+        jLabel4.setText("Velocidad eje y:");
 
-        jLabel6.setText("Posicion eje x");
+        jLabel6.setText("Posicion eje x:");
 
-        jLabel7.setText("Posicion eje y");
+        jLabel7.setText("Posicion eje y:");
 
-        jLabel8.setText("jLabel8");
+        jLabel8.setText("0");
 
-        jLabel9.setText("jLabel9");
+        jLabel9.setText("0");
 
-        jLabel10.setText("jLabel10");
+        jLabel10.setText("Aceleracion eje x:");
 
-        jLabel11.setText("jLabel11");
+        jLabel11.setText("Aceleracon eje y:");
+
+        jButton2.setText("Iniciar");
+        jButton2.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton2ActionPerformed(evt);
+            }
+        });
+
+        jLabel12.setText("0");
+
+        jLabel13.setText("0");
+
+        jLabel14.setText("0");
+
+        jLabel15.setText("0");
+
+        jButton5.setText("Pausar/Reanudar");
+
+        jButton6.setText("Reset");
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -393,39 +413,50 @@ public class Window extends javax.swing.JFrame {
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(canvas1, javax.swing.GroupLayout.PREFERRED_SIZE, 600, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
+                        .addComponent(canvas1, javax.swing.GroupLayout.PREFERRED_SIZE, 600, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                            .addGroup(layout.createSequentialGroup()
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                                .addComponent(jLabel5)
+                                .addGap(144, 144, 144))
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                                 .addComponent(jLabel1)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addGap(44, 44, 44)
                                 .addComponent(jComboBox1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                 .addComponent(jButton1)
                                 .addComponent(jCheckBox1)
-                                .addComponent(jLabel2))))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                        .addGap(125, 125, 125)
-                        .addComponent(jLabel5))
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                                        .addGap(6, 6, 6)
+                                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                            .addComponent(jLabel6)
+                                            .addComponent(jLabel7)
+                                            .addComponent(jLabel10)
+                                            .addComponent(jLabel11)
+                                            .addGroup(layout.createSequentialGroup()
+                                                .addGap(1, 1, 1)
+                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                                    .addComponent(jLabel4)
+                                                    .addComponent(jLabel3))))
+                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                            .addComponent(jLabel9)
+                                            .addComponent(jLabel8)
+                                            .addComponent(jLabel12)
+                                            .addComponent(jLabel13)
+                                            .addComponent(jLabel14)
+                                            .addComponent(jLabel15)))
+                                    .addComponent(jLabel2, javax.swing.GroupLayout.Alignment.TRAILING)))))
                     .addGroup(layout.createSequentialGroup()
-                        .addGap(18, 18, 18)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(jLabel4)
-                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                .addComponent(jLabel6)
-                                .addGroup(layout.createSequentialGroup()
-                                    .addGap(1, 1, 1)
-                                    .addComponent(jLabel3))
-                                .addComponent(jLabel7)
-                                .addComponent(jLabel10)
-                                .addComponent(jLabel11)))))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel9)
-                    .addComponent(jLabel8))
-                .addContainerGap(43, Short.MAX_VALUE))
+                        .addComponent(jButton2)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jButton5)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jButton6)))
+                .addContainerGap(149, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -445,7 +476,7 @@ public class Window extends javax.swing.JFrame {
                         .addComponent(jButton1)
                         .addGap(18, 18, 18)
                         .addComponent(jLabel2)
-                        .addGap(34, 34, 34)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(jLabel3)
                             .addComponent(jLabel8))
@@ -454,16 +485,29 @@ public class Window extends javax.swing.JFrame {
                             .addComponent(jLabel4, javax.swing.GroupLayout.PREFERRED_SIZE, 15, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(jLabel9))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(jLabel6)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jLabel5)
-                        .addGap(8, 8, 8)
-                        .addComponent(jLabel7)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel6)
+                            .addComponent(jLabel12))
+                        .addGap(14, 14, 14)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel7)
+                            .addComponent(jLabel13))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(jLabel10)
-                        .addGap(18, 18, 18)
-                        .addComponent(jLabel11)))
-                .addContainerGap(57, Short.MAX_VALUE))
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel10)
+                            .addComponent(jLabel14))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel11)
+                            .addComponent(jLabel15))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jLabel5)))
+                .addGap(19, 19, 19)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jButton2)
+                    .addComponent(jButton5)
+                    .addComponent(jButton6))
+                .addContainerGap(20, Short.MAX_VALUE))
         );
 
         pack();
@@ -478,11 +522,20 @@ public class Window extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_jCheckBox1ActionPerformed
 
+    private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_jButton2ActionPerformed
+
     public void updateLabels() {
         Vector2 v = circle.getLinearVelocity();
+        Vector2 p = circle.getLocalPoint(v);
+//Vector2 a = circle.
+        this.jLabel12.setText("" + p.x);
+        this.jLabel13.setText("" + p.y);
 
         this.jLabel8.setText("" + v.x);
         this.jLabel9.setText("" + v.y);
+        System.out.println();
     }
 
     /**
@@ -526,11 +579,18 @@ public class Window extends javax.swing.JFrame {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private java.awt.Canvas canvas1;
     private javax.swing.JButton jButton1;
+    private javax.swing.JButton jButton2;
+    private javax.swing.JButton jButton5;
+    private javax.swing.JButton jButton6;
     private javax.swing.JCheckBox jCheckBox1;
     private javax.swing.JComboBox<String> jComboBox1;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel11;
+    private javax.swing.JLabel jLabel12;
+    private javax.swing.JLabel jLabel13;
+    private javax.swing.JLabel jLabel14;
+    private javax.swing.JLabel jLabel15;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
