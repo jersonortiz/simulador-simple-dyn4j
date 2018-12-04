@@ -48,6 +48,7 @@ public final class Window extends javax.swing.JFrame {
     private boolean seleccionable;
     private boolean editable;
     private boolean paused;
+    SimulationBody selected;
 
     /**
      * A point for tracking the mouse click
@@ -169,7 +170,7 @@ public final class Window extends javax.swing.JFrame {
         this.render(g, elapsedTime);
 
         if (!paused) {
-        //    System.out.println(""+this.paused);
+            //    System.out.println(""+this.paused);
             this.update(g, elapsedTime);
         }
 
@@ -206,9 +207,24 @@ public final class Window extends javax.swing.JFrame {
         }
 
         this.seleccionar();
+        this.mover();
 
         this.updateLabels();
 
+    }
+
+    protected void mover() {
+        if (this.selected != null & this.point != null) {
+            // convert from screen space to world space
+            double x = (this.point.getX() - this.canvas1.getWidth() / 2.0) / this.scale;
+            double y = -(this.point.getY() - this.canvas1.getHeight() / 2.0) / this.scale;
+
+            // reset the transform of the controller body
+            Transform tx = new Transform();
+            tx.translate(x, y);
+            this.selected.setTransform(tx);
+            this.point = null;
+        }
     }
 
     protected void addObjet() {
@@ -297,6 +313,7 @@ public final class Window extends javax.swing.JFrame {
         for (DetectResult result : this.results) {
             SimulationBody sbr = (SimulationBody) result.getBody();
             if (sbr == body) {
+                this.selected = body;
                 color = Color.MAGENTA;
                 break;
             }
