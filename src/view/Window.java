@@ -181,7 +181,7 @@ public final class Window extends javax.swing.JFrame {
         floor.addFixture(new BodyFixture(floorRect));
         floor.setMass(MassType.INFINITE);
 
-        floor.translate(0.0, -2.0);
+        floor.translate(0.0, -5.0);
         this.world.addBody(floor);
 
         Circle cirShape = new Circle(0.5);
@@ -320,7 +320,7 @@ public final class Window extends javax.swing.JFrame {
             Transform tx = new Transform();
             tx.translate(x, y);
             this.selected.setTransform(tx);
-            this.point = null;
+            //  this.point = null;
         } else {
             this.selected = null;
         }
@@ -333,14 +333,31 @@ public final class Window extends javax.swing.JFrame {
         if (this.point != null) {
             double x = (this.point.getX() - this.canvas1.getWidth() / 2.0) / this.SCALE;
             double y = -(this.point.getY() - this.canvas1.getHeight() / 2.0) / this.SCALE;
-
-            SimulationBody no = new SimulationBody();
-            no.addFixture(Geometry.createSquare(0.5));
-            no.translate(x, y);
-            no.setMass(MassType.NORMAL);
-            this.world.addBody(no);
-            this.point = null;
+            Vector2 v = null;
+            double i;
+            Mass m = null;
+            SimulationBody no= new SimulationBody();
+            switch (this.jcto.getSelectedIndex()) {
+                case 0:
+                    
+                    Circle cirShape = new Circle(0.5);
+                    no.addFixture(cirShape);
+                    no.translate(x, y);
+                    no.setMass(MassType.NORMAL);
+                    no.setMass(new Mass(no.getMass().getCenter(), 1.0, no.getMass().getInertia()));
+                    this.world.addBody(circle);
+                    break;
+                case 1:
+                    
+                    no.addFixture(Geometry.createSquare(0.5));
+                    no.translate(x, y);
+                    no.setMass(MassType.NORMAL);
+                    no.setMass(new Mass(no.getMass().getCenter(), 1.0, no.getMass().getInertia()));
+                    this.world.addBody(no);
+                    break;
+            }
         }
+
     }
 
     /*
@@ -431,11 +448,13 @@ public final class Window extends javax.swing.JFrame {
         for (DetectResult result : this.results) {
             SimulationBody sbr = (SimulationBody) result.getBody();
             if (sbr == body) {
-                this.selected = body;
-                this.movible = body;
-                this.obj.setBody(body);
-                color = Color.MAGENTA;
-                break;
+                if (!body.getMass().isInfinite()) {
+                    this.selected = body;
+                    this.movible = body;
+                    this.obj.setBody(body);
+                    color = Color.MAGENTA;
+                    break;
+                }
             }
         }
 
@@ -494,8 +513,6 @@ public final class Window extends javax.swing.JFrame {
 
         canvas1 = new java.awt.Canvas();
         jCheckBox1 = new javax.swing.JCheckBox();
-        jComboBox1 = new javax.swing.JComboBox<>();
-        jLabel1 = new javax.swing.JLabel();
         jLabel2 = new javax.swing.JLabel();
         jLabel3 = new javax.swing.JLabel();
         jLabel4 = new javax.swing.JLabel();
@@ -515,8 +532,9 @@ public final class Window extends javax.swing.JFrame {
         jButton6 = new javax.swing.JButton();
         jCheckBox2 = new javax.swing.JCheckBox();
         jCheckBox3 = new javax.swing.JCheckBox();
-        jButton1 = new javax.swing.JButton();
         jButton3 = new javax.swing.JButton();
+        jcto = new javax.swing.JComboBox<>();
+        jLabel1 = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setResizable(false);
@@ -527,10 +545,6 @@ public final class Window extends javax.swing.JFrame {
                 jCheckBox1ActionPerformed(evt);
             }
         });
-
-        jComboBox1.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
-
-        jLabel1.setText("Escala");
 
         jLabel2.setText("Objeto seleccionado");
 
@@ -587,15 +601,22 @@ public final class Window extends javax.swing.JFrame {
         });
 
         jCheckBox3.setText("Mover objetos");
+        jCheckBox3.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jCheckBox3ActionPerformed(evt);
+            }
+        });
 
-        jButton1.setText("Tipo");
-
-        jButton3.setText("jButton3");
+        jButton3.setText("Propiedades del objeto");
         jButton3.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jButton3ActionPerformed(evt);
             }
         });
+
+        jcto.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "circulo", "cuadrado" }));
+
+        jLabel1.setText("Tipo");
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -609,10 +630,6 @@ public final class Window extends javax.swing.JFrame {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(jLabel5)
-                            .addGroup(layout.createSequentialGroup()
-                                .addComponent(jLabel1)
-                                .addGap(33, 33, 33)
-                                .addComponent(jComboBox1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                             .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addGroup(layout.createSequentialGroup()
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
@@ -628,30 +645,33 @@ public final class Window extends javax.swing.JFrame {
                                                 .addGap(1, 1, 1)
                                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                                     .addComponent(jLabel4)
-                                                    .addComponent(jLabel3)))
-                                            .addGroup(layout.createSequentialGroup()
-                                                .addGap(12, 12, 12)
-                                                .addComponent(jButton3)))))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                    .addComponent(jLabel9, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                    .addComponent(jLabel12, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                    .addComponent(jLabel13, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                    .addComponent(jLabel14, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                    .addComponent(jLabel15, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                    .addComponent(jLabel8, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                                                    .addComponent(jLabel3))))))
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addGroup(layout.createSequentialGroup()
+                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                            .addComponent(jLabel9, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                            .addComponent(jLabel12, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                            .addComponent(jLabel13, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                            .addComponent(jLabel14, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                            .addComponent(jLabel15, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                            .addComponent(jLabel8, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                                    .addGroup(layout.createSequentialGroup()
+                                        .addGap(31, 31, 31)
+                                        .addComponent(jLabel1))))
                             .addComponent(jCheckBox3)
+                            .addComponent(jButton3)
                             .addGroup(layout.createSequentialGroup()
                                 .addComponent(jCheckBox2)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 69, Short.MAX_VALUE)
-                                .addComponent(jButton1))))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addComponent(jcto, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(jButton2)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jButton5)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jButton6)))
-                .addGap(29, 29, 29))
+                .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -659,18 +679,21 @@ public final class Window extends javax.swing.JFrame {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
                         .addContainerGap()
-                        .addComponent(canvas1, javax.swing.GroupLayout.PREFERRED_SIZE, 480, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(layout.createSequentialGroup()
-                        .addGap(14, 14, 14)
+                        .addComponent(canvas1, javax.swing.GroupLayout.PREFERRED_SIZE, 480, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(19, 19, 19)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jComboBox1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jButton2)
+                            .addComponent(jButton5)
+                            .addComponent(jButton6)))
+                    .addGroup(layout.createSequentialGroup()
+                        .addGap(20, 20, 20)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jCheckBox1)
                             .addComponent(jLabel1))
-                        .addGap(18, 18, 18)
-                        .addComponent(jCheckBox1)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(jCheckBox2)
-                            .addComponent(jButton1))
+                            .addComponent(jcto, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(jCheckBox3)
                         .addGap(11, 11, 11)
@@ -699,15 +722,10 @@ public final class Window extends javax.swing.JFrame {
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(jLabel11)
                             .addComponent(jLabel15))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGap(38, 38, 38)
                         .addComponent(jLabel5)
-                        .addGap(9, 9, 9)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jButton3)))
-                .addGap(19, 19, 19)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jButton2)
-                    .addComponent(jButton5)
-                    .addComponent(jButton6))
                 .addContainerGap(20, Short.MAX_VALUE))
         );
 
@@ -765,21 +783,31 @@ public final class Window extends javax.swing.JFrame {
         this.obj.setVisible(true);
     }//GEN-LAST:event_jButton3ActionPerformed
 
+    private void jCheckBox3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBox3ActionPerformed
+       
+    }//GEN-LAST:event_jCheckBox3ActionPerformed
+
     public void updateLabels() {
 
         if (this.movible != null) {
             Vector2 v = this.movible.getLinearVelocity();
 
-            this.jLabel8.setText("" + (float) v.x);
-            this.jLabel9.setText("" + (float) v.y);
+            this.jLabel8.setText("" + (float) Math.round(v.x));
+            this.jLabel9.setText("" + (float) Math.round(v.y));
 
             Vector2 a = new Vector2(0.0, 0.0);
             //Vector2 p = circle.getLocalPoint(a);
             Vector2 p = movible.getWorldCenter();
 
-            this.jLabel12.setText("" + (float) p.x);
-            this.jLabel13.setText("" + (float) p.y);
+            this.jLabel12.setText("" + (float) Math.round(p.x));
+            this.jLabel13.setText("" + (float) Math.round(p.y));
             //System.out.println();
+           //Vector2 ac = movible.getForce();
+          //  this.jLabel14.setText("" + (float) Math.round(ac.x));
+        //  this.jLabel15.setText("" + (float) Math.round(ac.y));
+            
+            
+            
         }
     }
 
@@ -823,7 +851,6 @@ public final class Window extends javax.swing.JFrame {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private java.awt.Canvas canvas1;
-    private javax.swing.JButton jButton1;
     private javax.swing.JButton jButton2;
     private javax.swing.JButton jButton3;
     private javax.swing.JButton jButton5;
@@ -831,7 +858,6 @@ public final class Window extends javax.swing.JFrame {
     private javax.swing.JCheckBox jCheckBox1;
     private javax.swing.JCheckBox jCheckBox2;
     private javax.swing.JCheckBox jCheckBox3;
-    private javax.swing.JComboBox<String> jComboBox1;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel11;
@@ -847,5 +873,6 @@ public final class Window extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel7;
     private javax.swing.JLabel jLabel8;
     private javax.swing.JLabel jLabel9;
+    private javax.swing.JComboBox<String> jcto;
     // End of variables declaration//GEN-END:variables
 }
