@@ -88,6 +88,10 @@ public final class Window extends javax.swing.JFrame {
      * the selected objet
      */
     SimulationBody selected;
+    /**
+     * objeto a mover
+     */
+    SimulationBody movible;
 
     /**
      * A point for tracking the mouse click
@@ -108,6 +112,11 @@ public final class Window extends javax.swing.JFrame {
      * The picking results
      */
     private List<DetectResult> results = new ArrayList<DetectResult>();
+
+    /**
+     * ventana de configuracion del objeto seleccionado
+     */
+    objConfig obj;
 
     /**
      * A custom mouse adapter for listening for mouse clicks.
@@ -144,6 +153,7 @@ public final class Window extends javax.swing.JFrame {
 
     public Window() {
         initComponents();
+        this.obj = new objConfig();
         this.scale = Window.SCALE;
         this.editable = false;
         MouseAdapter ml = new CustomMouseAdapter();
@@ -159,8 +169,13 @@ public final class Window extends javax.swing.JFrame {
     protected void initializeWorld() {
 
         this.world = new World();
+
         // this.world.setGravity(World.EARTH_GRAVITY);
         this.world.setGravity(World.ZERO_GRAVITY);
+
+        //desactiva el autosleep de ese m
+        this.world.getSettings().setAutoSleepingEnabled(false);
+
         Rectangle floorRect = new Rectangle(15.0, 1.0);
         SimulationBody floor = new SimulationBody();
         floor.addFixture(new BodyFixture(floorRect));
@@ -417,6 +432,8 @@ public final class Window extends javax.swing.JFrame {
             SimulationBody sbr = (SimulationBody) result.getBody();
             if (sbr == body) {
                 this.selected = body;
+                this.movible = body;
+                this.obj.setBody(body);
                 color = Color.MAGENTA;
                 break;
             }
@@ -498,6 +515,8 @@ public final class Window extends javax.swing.JFrame {
         jButton6 = new javax.swing.JButton();
         jCheckBox2 = new javax.swing.JCheckBox();
         jCheckBox3 = new javax.swing.JCheckBox();
+        jButton1 = new javax.swing.JButton();
+        jButton3 = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setResizable(false);
@@ -569,6 +588,15 @@ public final class Window extends javax.swing.JFrame {
 
         jCheckBox3.setText("Mover objetos");
 
+        jButton1.setText("Tipo");
+
+        jButton3.setText("jButton3");
+        jButton3.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton3ActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -600,7 +628,10 @@ public final class Window extends javax.swing.JFrame {
                                                 .addGap(1, 1, 1)
                                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                                     .addComponent(jLabel4)
-                                                    .addComponent(jLabel3))))))
+                                                    .addComponent(jLabel3)))
+                                            .addGroup(layout.createSequentialGroup()
+                                                .addGap(12, 12, 12)
+                                                .addComponent(jButton3)))))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                                     .addComponent(jLabel9, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
@@ -609,15 +640,18 @@ public final class Window extends javax.swing.JFrame {
                                     .addComponent(jLabel14, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                     .addComponent(jLabel15, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                     .addComponent(jLabel8, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-                            .addComponent(jCheckBox2)
-                            .addComponent(jCheckBox3)))
+                            .addComponent(jCheckBox3)
+                            .addGroup(layout.createSequentialGroup()
+                                .addComponent(jCheckBox2)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 69, Short.MAX_VALUE)
+                                .addComponent(jButton1))))
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(jButton2)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jButton5)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jButton6)))
-                .addContainerGap(130, Short.MAX_VALUE))
+                .addGap(29, 29, 29))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -634,7 +668,9 @@ public final class Window extends javax.swing.JFrame {
                         .addGap(18, 18, 18)
                         .addComponent(jCheckBox1)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jCheckBox2)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jCheckBox2)
+                            .addComponent(jButton1))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(jCheckBox3)
                         .addGap(11, 11, 11)
@@ -664,7 +700,9 @@ public final class Window extends javax.swing.JFrame {
                             .addComponent(jLabel11)
                             .addComponent(jLabel15))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jLabel5)))
+                        .addComponent(jLabel5)
+                        .addGap(9, 9, 9)
+                        .addComponent(jButton3)))
                 .addGap(19, 19, 19)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jButton2)
@@ -723,19 +761,26 @@ public final class Window extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_jCheckBox2ActionPerformed
 
+    private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
+        this.obj.setVisible(true);
+    }//GEN-LAST:event_jButton3ActionPerformed
+
     public void updateLabels() {
-        Vector2 v = circle.getLinearVelocity();
 
-        this.jLabel8.setText("" + (float) v.x);
-        this.jLabel9.setText("" + (float) v.y);
+        if (this.movible != null) {
+            Vector2 v = this.movible.getLinearVelocity();
 
-        Vector2 a = new Vector2(0.0, 0.0);
-        //Vector2 p = circle.getLocalPoint(a);
-        Vector2 p = circle.getWorldCenter();
+            this.jLabel8.setText("" + (float) v.x);
+            this.jLabel9.setText("" + (float) v.y);
 
-        this.jLabel12.setText("" + (float) p.x);
-        this.jLabel13.setText("" + (float) p.y);
-        //System.out.println();
+            Vector2 a = new Vector2(0.0, 0.0);
+            //Vector2 p = circle.getLocalPoint(a);
+            Vector2 p = movible.getWorldCenter();
+
+            this.jLabel12.setText("" + (float) p.x);
+            this.jLabel13.setText("" + (float) p.y);
+            //System.out.println();
+        }
     }
 
     /**
@@ -778,7 +823,9 @@ public final class Window extends javax.swing.JFrame {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private java.awt.Canvas canvas1;
+    private javax.swing.JButton jButton1;
     private javax.swing.JButton jButton2;
+    private javax.swing.JButton jButton3;
     private javax.swing.JButton jButton5;
     private javax.swing.JButton jButton6;
     private javax.swing.JCheckBox jCheckBox1;
