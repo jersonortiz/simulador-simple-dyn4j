@@ -20,6 +20,8 @@ import java.util.List;
 import model.util.GameObject;
 import model.util.Graphics2DRenderer;
 import model.util.SimulationBody;
+import org.dyn4j.collision.Fixture;
+import org.dyn4j.dynamics.Body;
 import org.dyn4j.dynamics.BodyFixture;
 import org.dyn4j.dynamics.DetectResult;
 import org.dyn4j.dynamics.World;
@@ -28,8 +30,10 @@ import org.dyn4j.geometry.Convex;
 import org.dyn4j.geometry.Geometry;
 import org.dyn4j.geometry.MassType;
 import org.dyn4j.geometry.Mass;
+import org.dyn4j.geometry.Polygon;
 import org.dyn4j.geometry.Rectangle;
 import org.dyn4j.geometry.Transform;
+import org.dyn4j.geometry.Triangle;
 import org.dyn4j.geometry.Vector2;
 
 /**
@@ -79,6 +83,10 @@ public final class Window extends javax.swing.JFrame {
      */
     private boolean editable;
 
+    /**
+     *
+     */
+    private boolean puedemover;
     /**
      * True if the simulation is paused
      */
@@ -156,6 +164,7 @@ public final class Window extends javax.swing.JFrame {
         this.obj = new objConfig();
         this.scale = Window.SCALE;
         this.editable = false;
+        this.puedemover = false;
         MouseAdapter ml = new CustomMouseAdapter();
         this.canvas1.addMouseMotionListener(ml);
         this.canvas1.addMouseWheelListener(ml);
@@ -178,7 +187,10 @@ public final class Window extends javax.swing.JFrame {
 
         Rectangle floorRect = new Rectangle(15.0, 1.0);
         SimulationBody floor = new SimulationBody();
-        floor.addFixture(new BodyFixture(floorRect));
+        BodyFixture f = new BodyFixture(floorRect);
+        f.setFriction(0.0);
+        floor.addFixture(f);
+
         floor.setMass(MassType.INFINITE);
 
         floor.translate(0.0, -5.0);
@@ -297,12 +309,15 @@ public final class Window extends javax.swing.JFrame {
      */
     protected void update(Graphics2D g, double elapsedTime) {
         this.world.update(elapsedTime);
+
         if (this.editable) {
             this.addObjet();
         }
 
         this.seleccionar();
-        this.mover();
+        if (this.puedemover) {
+            this.mover();
+        }
         this.updateLabels();
 
     }
@@ -336,26 +351,38 @@ public final class Window extends javax.swing.JFrame {
             Vector2 v = null;
             double i;
             Mass m = null;
-            SimulationBody no= new SimulationBody();
+            BodyFixture f = null;
+            SimulationBody no = new SimulationBody();
             switch (this.jcto.getSelectedIndex()) {
                 case 0:
-                    
                     Circle cirShape = new Circle(0.5);
-                    no.addFixture(cirShape);
-                    no.translate(x, y);
-                    no.setMass(MassType.NORMAL);
-                    no.setMass(new Mass(no.getMass().getCenter(), 1.0, no.getMass().getInertia()));
-                    this.world.addBody(circle);
+                    f = new BodyFixture(cirShape);
                     break;
                 case 1:
-                    
-                    no.addFixture(Geometry.createSquare(0.5));
-                    no.translate(x, y);
-                    no.setMass(MassType.NORMAL);
-                    no.setMass(new Mass(no.getMass().getCenter(), 1.0, no.getMass().getInertia()));
-                    this.world.addBody(no);
+                    Rectangle r = Geometry.createSquare(0.5);
+                    f = new BodyFixture(r);
+                    break;
+                case 2:
+                    Triangle tr = Geometry.createTriangle(new Vector2(0.0, 0.5), new Vector2(-0.5, -0.5), new Vector2(0.5, -0.5));
+                    f = new BodyFixture(tr);
+                    break;
+                case 3:
+                    Polygon po = Geometry.createUnitCirclePolygon(5, 0.5);
+                    f = new BodyFixture(po);
+                    break;
+                case 4:
+                    Polygon he = Geometry.createUnitCirclePolygon(6, 0.5);
+                    f = new BodyFixture(he);
                     break;
             }
+            f.setFriction(0.0);
+            no.addFixture(f);
+            no.translate(x, y);
+            no.setMass(MassType.NORMAL);
+            //asigna masa de 1 kg
+            no.setMass(new Mass(no.getMass().getCenter(), 1.0, no.getMass().getInertia()));
+            this.world.addBody(no);
+
         }
 
     }
@@ -614,7 +641,7 @@ public final class Window extends javax.swing.JFrame {
             }
         });
 
-        jcto.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "circulo", "cuadrado" }));
+        jcto.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "circulo", "cuadrado", "triangulo", "pentagono", "hexagono" }));
 
         jLabel1.setText("Tipo");
 
@@ -629,49 +656,44 @@ public final class Window extends javax.swing.JFrame {
                         .addComponent(canvas1, javax.swing.GroupLayout.PREFERRED_SIZE, 600, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jCheckBox2)
+                            .addGroup(layout.createSequentialGroup()
+                                .addGap(21, 21, 21)
+                                .addComponent(jLabel1)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(jcto, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                             .addComponent(jLabel5)
-                            .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addGroup(layout.createSequentialGroup()
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                                    .addComponent(jCheckBox1, javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
-                                        .addGap(7, 7, 7)
-                                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                            .addComponent(jLabel6)
-                                            .addComponent(jLabel7)
-                                            .addComponent(jLabel10)
-                                            .addComponent(jLabel11)
-                                            .addGroup(layout.createSequentialGroup()
-                                                .addGap(1, 1, 1)
-                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                                    .addComponent(jLabel4)
-                                                    .addComponent(jLabel3))))))
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addGroup(layout.createSequentialGroup()
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                            .addComponent(jLabel9, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                            .addComponent(jLabel12, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                            .addComponent(jLabel13, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                            .addComponent(jLabel14, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                            .addComponent(jLabel15, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                            .addComponent(jLabel8, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-                                    .addGroup(layout.createSequentialGroup()
-                                        .addGap(31, 31, 31)
-                                        .addComponent(jLabel1))))
+                            .addComponent(jCheckBox1)
                             .addComponent(jCheckBox3)
-                            .addComponent(jButton3)
                             .addGroup(layout.createSequentialGroup()
-                                .addComponent(jCheckBox2)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                .addComponent(jcto, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                                .addGap(7, 7, 7)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(jLabel6)
+                                    .addComponent(jLabel7)
+                                    .addComponent(jLabel10)
+                                    .addComponent(jLabel11)
+                                    .addGroup(layout.createSequentialGroup()
+                                        .addGap(1, 1, 1)
+                                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                            .addComponent(jLabel4)
+                                            .addComponent(jLabel3))))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                    .addComponent(jLabel9, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(jLabel12, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(jLabel13, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(jLabel14, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(jLabel15, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(jLabel8)))
+                            .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 161, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jButton3)))
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(jButton2)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jButton5)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jButton6)))
-                .addContainerGap())
+                .addContainerGap(38, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -687,16 +709,16 @@ public final class Window extends javax.swing.JFrame {
                             .addComponent(jButton6)))
                     .addGroup(layout.createSequentialGroup()
                         .addGap(20, 20, 20)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jCheckBox1)
-                            .addComponent(jLabel1))
+                        .addComponent(jCheckBox1)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jCheckBox2)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jCheckBox2)
+                            .addComponent(jLabel1)
                             .addComponent(jcto, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jCheckBox3)
-                        .addGap(11, 11, 11)
+                        .addGap(18, 18, 18)
                         .addComponent(jLabel2)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
@@ -722,10 +744,10 @@ public final class Window extends javax.swing.JFrame {
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(jLabel11)
                             .addComponent(jLabel15))
-                        .addGap(38, 38, 38)
-                        .addComponent(jLabel5)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jButton3)))
+                        .addGap(18, 18, 18)
+                        .addComponent(jButton3)
+                        .addGap(18, 18, 18)
+                        .addComponent(jLabel5)))
                 .addContainerGap(20, Short.MAX_VALUE))
         );
 
@@ -764,8 +786,10 @@ public final class Window extends javax.swing.JFrame {
     private void jButton6ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton6ActionPerformed
         this.pause();
         this.stop();
+        this.resestablecervarables();
         this.initializeWorld();
         this.start();
+        this.resume();
     }//GEN-LAST:event_jButton6ActionPerformed
 
     /*
@@ -784,9 +808,26 @@ public final class Window extends javax.swing.JFrame {
     }//GEN-LAST:event_jButton3ActionPerformed
 
     private void jCheckBox3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBox3ActionPerformed
-       
+        if (this.jCheckBox3.isSelected()) {
+            this.puedemover = true;
+        } else {
+            this.puedemover = false;
+        }
     }//GEN-LAST:event_jCheckBox3ActionPerformed
 
+    
+    public void resestablecervarables(){
+             this.obj = new objConfig();
+        this.scale = Window.SCALE;
+        this.editable = false;
+        this.puedemover = false;
+        MouseAdapter ml = new CustomMouseAdapter();
+        this.canvas1.addMouseMotionListener(ml);
+        this.canvas1.addMouseWheelListener(ml);
+        this.canvas1.addMouseListener(ml);
+        
+    }
+    
     public void updateLabels() {
 
         if (this.movible != null) {
@@ -802,12 +843,10 @@ public final class Window extends javax.swing.JFrame {
             this.jLabel12.setText("" + (float) Math.round(p.x));
             this.jLabel13.setText("" + (float) Math.round(p.y));
             //System.out.println();
-           //Vector2 ac = movible.getForce();
-          //  this.jLabel14.setText("" + (float) Math.round(ac.x));
-        //  this.jLabel15.setText("" + (float) Math.round(ac.y));
-            
-            
-            
+            //Vector2 ac = movible.getForce();
+            //  this.jLabel14.setText("" + (float) Math.round(ac.x));
+            //  this.jLabel15.setText("" + (float) Math.round(ac.y));
+
         }
     }
 
