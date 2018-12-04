@@ -8,19 +8,27 @@ package view;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Point;
+import java.awt.RenderingHints;
 import java.awt.Toolkit;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferStrategy;
+import java.util.ArrayList;
+import java.util.List;
 import model.util.GameObject;
+import model.util.Graphics2DRenderer;
+import model.util.SimulationBody;
 import org.dyn4j.dynamics.BodyFixture;
+import org.dyn4j.dynamics.DetectResult;
 import org.dyn4j.dynamics.World;
 import org.dyn4j.geometry.Circle;
+import org.dyn4j.geometry.Convex;
 import org.dyn4j.geometry.Geometry;
 import org.dyn4j.geometry.MassType;
 import org.dyn4j.geometry.Mass;
 import org.dyn4j.geometry.Rectangle;
+import org.dyn4j.geometry.Transform;
 import org.dyn4j.geometry.Vector2;
 
 /**
@@ -32,11 +40,34 @@ public final class Window extends javax.swing.JFrame {
     private static final long serialVersionUID = 5663760293144882635L;
     public static final double SCALE = 45.0;
     public static final double NANO_TO_BASE = 1.0e9;
-    private GameObject circle;
+    protected final double scale;
+    private SimulationBody circle;
     protected World world;
     protected boolean stopped;
     protected long last;
+    private boolean seleccionable;
+    private boolean editable;
+    private boolean paused;
+
+    /**
+     * A point for tracking the mouse click
+     */
     private Point point;
+
+    /**
+     * The picking radius
+     */
+    private static final double PICKING_RADIUS = 0.1;
+
+    /**
+     * The world space mouse point
+     */
+    private Vector2 worldPoint = new Vector2();
+
+    /**
+     * The picking results
+     */
+    private List<DetectResult> results = new ArrayList<DetectResult>();
 
     private final class CustomMouseAdapter extends MouseAdapter {
 
@@ -49,11 +80,20 @@ public final class Window extends javax.swing.JFrame {
         public void mouseReleased(MouseEvent e) {
             point = null;
         }
+
+        @Override
+        public void mouseDragged(MouseEvent e) {
+            // store the mouse click postion for use later
+            point = new Point(e.getX(), e.getY());
+            super.mouseDragged(e);
+        }
+
     }
 
     public Window() {
         initComponents();
-
+        this.scale = Window.SCALE;
+        this.editable = false;
         MouseAdapter ml = new CustomMouseAdapter();
         this.canvas1.addMouseMotionListener(ml);
         this.canvas1.addMouseWheelListener(ml);
@@ -66,10 +106,10 @@ public final class Window extends javax.swing.JFrame {
     protected void initializeWorld() {
 
         this.world = new World();
-        this.world.setGravity(World.EARTH_GRAVITY);
-
+        // this.world.setGravity(World.EARTH_GRAVITY);
+        this.world.setGravity(World.ZERO_GRAVITY);
         Rectangle floorRect = new Rectangle(15.0, 1.0);
-        GameObject floor = new GameObject();
+        SimulationBody floor = new SimulationBody();
         floor.addFixture(new BodyFixture(floorRect));
         floor.setMass(MassType.INFINITE);
 
@@ -77,7 +117,7 @@ public final class Window extends javax.swing.JFrame {
         this.world.addBody(floor);
 
         Circle cirShape = new Circle(0.5);
-        this.circle = new GameObject();
+        this.circle = new SimulationBody();
         circle.addFixture(cirShape);
         circle.setMass(MassType.NORMAL);
         circle.translate(-4.0, 2.0);
@@ -117,26 +157,30 @@ public final class Window extends javax.swing.JFrame {
     protected void gameLoop() {
 
         Graphics2D g = (Graphics2D) this.canvas1.getBufferStrategy().getDrawGraphics();
+
         this.transform(g);
         this.clear(g);
-        this.render(g);
-        BufferStrategy strategy = this.canvas1.getBufferStrategy();
 
-        if (!strategy.contentsLost()) {
-            strategy.show();
-        }
-
-        Toolkit.getDefaultToolkit().sync();
         long time = System.nanoTime();
         long diff = time - this.last;
         this.last = time;
         double elapsedTime = diff / NANO_TO_BASE;
 
-        if (!this.stopped) {
+        this.render(g, elapsedTime);
+
+        if (!paused) {
+        //    System.out.println(""+this.paused);
             this.update(g, elapsedTime);
         }
+
         g.dispose();
 
+        BufferStrategy strategy = this.canvas1.getBufferStrategy();
+
+        if (!strategy.contentsLost()) {
+            strategy.show();
+        }
+        Toolkit.getDefaultToolkit().sync();
     }
 
     protected void transform(Graphics2D g) {
@@ -156,45 +200,150 @@ public final class Window extends javax.swing.JFrame {
     }
 
     protected void update(Graphics2D g, double elapsedTime) {
+        this.world.update(elapsedTime);
+        if (this.editable) {
+            this.addObjet();
+        }
 
-        double mass = circle.getMass().getMass();
-        final double force = 9.8 * mass;
-        final Vector2 rr = new Vector2(0, force);
+        this.seleccionar();
 
+        this.updateLabels();
+
+    }
+
+    protected void addObjet() {
         if (this.point != null) {
             double x = (this.point.getX() - this.canvas1.getWidth() / 2.0) / this.SCALE;
             double y = -(this.point.getY() - this.canvas1.getHeight() / 2.0) / this.SCALE;
 
-            GameObject no = new GameObject();
+            SimulationBody no = new SimulationBody();
             no.addFixture(Geometry.createSquare(0.5));
             no.translate(x, y);
             no.setMass(MassType.NORMAL);
             this.world.addBody(no);
             this.point = null;
         }
-
-        this.updateLabels();
-        this.world.update(elapsedTime);
     }
 
-    protected void render(Graphics2D g) {
-        g.setColor(Color.WHITE);
-        g.fillRect(-400, -300, 800, 600);
+    protected void seleccionar() {
 
-        g.translate(0.0, -1.0 * SCALE);
+        final double scale = Window.SCALE;
+        this.results.clear();
 
-        for (int i = 0; i < this.world.getBodyCount(); i++) {
-            GameObject go = (GameObject) this.world.getBody(i);
-            go.render(g);
+        // we are going to use a circle to do our picking
+        Convex convex = Geometry.createCircle(Window.PICKING_RADIUS);
+        Transform transform = new Transform();
+        double x = 0;
+        double y = 0;
+
+        // convert the point from panel space to world space
+        if (this.point != null) {
+            // convert the screen space point to world space
+            x = (this.point.getX() - this.canvas1.getWidth() * 0.5) / scale;
+            y = -(this.point.getY() - this.canvas1.getHeight() * 0.5) / scale;
+            this.worldPoint.set(x, y);
+
+            // set the transform
+            transform.translate(x, y);
+
+            // detect bodies under the mouse pointer
+            this.world.detect(
+                    convex,
+                    transform,
+                    null, // no, don't filter anything using the Filters 
+                    false, // include sensor fixtures 
+                    false, // include inactive bodies
+                    false, // we don't need collision info 
+                    this.results);
+
+            // you could also iterate over the bodies and do a point in body test
+//			for (int i = 0; i < this.world.getBodyCount(); i++) {
+//				Body b = this.world.getBody(i);
+//				if (b.contains(new Vector2(x, y))) {
+//					// record this body
+//				}
+//			}
         }
     }
 
+    protected void render(Graphics2D g, double elapsedTime) {
+
+        g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        // draw all the objects in the world
+        for (int i = 0; i < this.world.getBodyCount(); i++) {
+            // get the object
+            SimulationBody body = (SimulationBody) this.world.getBody(i);
+            this.render(g, elapsedTime, body);
+        }
+
+        if (this.point != null) {
+            AffineTransform tx = g.getTransform();
+            g.translate(this.worldPoint.x * Window.SCALE, this.worldPoint.y * Window.SCALE);
+            Graphics2DRenderer.render(g, Geometry.createCircle(Window.PICKING_RADIUS), Window.SCALE, Color.GREEN);
+            g.setTransform(tx);
+        }
+
+    }
+
+    protected void render(Graphics2D g, double elapsedTime, SimulationBody body) {
+        // draw the object
+        // body.render(g, Window.SCALE);
+
+        Color color = body.getColor();
+
+        // change the color of the shape if its been picked
+        for (DetectResult result : this.results) {
+            SimulationBody sbr = (SimulationBody) result.getBody();
+            if (sbr == body) {
+                color = Color.MAGENTA;
+                break;
+            }
+        }
+
+        // draw the object
+        body.render(g, Window.SCALE, color);
+
+    }
+
+    /**
+     * Stops the simulation.
+     */
     public synchronized void stop() {
         this.stopped = true;
     }
 
-    public synchronized boolean isStopped() {
+    /**
+     * Returns true if the simulation is stopped.
+     *
+     * @return boolean true if stopped
+     */
+    public boolean isStopped() {
         return this.stopped;
+    }
+
+    /**
+     * Pauses the simulation.
+     */
+    public synchronized void pause() {
+        this.paused = true;
+    }
+
+    /**
+     * Pauses the simulation.
+     */
+    public synchronized void resume() {
+        this.paused = false;
+    }
+
+    /**
+     * Returns true if the simulation is paused.
+     *
+     * @return boolean true if paused
+     */
+    public boolean isPaused() {
+        return this.paused;
     }
 
     /**
@@ -208,7 +357,6 @@ public final class Window extends javax.swing.JFrame {
 
         canvas1 = new java.awt.Canvas();
         jCheckBox1 = new javax.swing.JCheckBox();
-        jButton1 = new javax.swing.JButton();
         jComboBox1 = new javax.swing.JComboBox<>();
         jLabel1 = new javax.swing.JLabel();
         jLabel2 = new javax.swing.JLabel();
@@ -228,6 +376,8 @@ public final class Window extends javax.swing.JFrame {
         jLabel15 = new javax.swing.JLabel();
         jButton5 = new javax.swing.JButton();
         jButton6 = new javax.swing.JButton();
+        jCheckBox2 = new javax.swing.JCheckBox();
+        jCheckBox3 = new javax.swing.JCheckBox();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setResizable(false);
@@ -236,13 +386,6 @@ public final class Window extends javax.swing.JFrame {
         jCheckBox1.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jCheckBox1ActionPerformed(evt);
-            }
-        });
-
-        jButton1.setText("Añadir objeto");
-        jButton1.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton1ActionPerformed(evt);
             }
         });
 
@@ -297,6 +440,15 @@ public final class Window extends javax.swing.JFrame {
             }
         });
 
+        jCheckBox2.setText("Añadir objetos");
+        jCheckBox2.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jCheckBox2ActionPerformed(evt);
+            }
+        });
+
+        jCheckBox3.setText("Mover objetos");
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -313,9 +465,7 @@ public final class Window extends javax.swing.JFrame {
                                 .addComponent(jLabel1)
                                 .addGap(33, 33, 33)
                                 .addComponent(jComboBox1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                                .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addComponent(jButton1, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                            .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addGroup(layout.createSequentialGroup()
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
                                     .addComponent(jCheckBox1, javax.swing.GroupLayout.Alignment.LEADING)
@@ -338,7 +488,9 @@ public final class Window extends javax.swing.JFrame {
                                     .addComponent(jLabel13, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                     .addComponent(jLabel14, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                     .addComponent(jLabel15, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                    .addComponent(jLabel8, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))))
+                                    .addComponent(jLabel8, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                            .addComponent(jCheckBox2)
+                            .addComponent(jCheckBox3)))
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(jButton2)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -361,9 +513,11 @@ public final class Window extends javax.swing.JFrame {
                             .addComponent(jLabel1))
                         .addGap(18, 18, 18)
                         .addComponent(jCheckBox1)
-                        .addGap(18, 18, 18)
-                        .addComponent(jButton1)
-                        .addGap(18, 18, 18)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jCheckBox2)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(jCheckBox3)
+                        .addGap(11, 11, 11)
                         .addComponent(jLabel2)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
@@ -405,7 +559,6 @@ public final class Window extends javax.swing.JFrame {
     private void jCheckBox1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBox1ActionPerformed
         if (this.jCheckBox1.isSelected()) {
             this.world.setGravity(World.EARTH_GRAVITY);
-
         } else {
             this.world.setGravity(World.ZERO_GRAVITY);
         }
@@ -416,22 +569,27 @@ public final class Window extends javax.swing.JFrame {
     }//GEN-LAST:event_jButton2ActionPerformed
 
     private void jButton5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton5ActionPerformed
-        if (this.isStopped()) {
-            this.start();
+        if (isPaused()) {
+            this.resume();
         } else {
-            this.stop();
+            this.pause();
         }
     }//GEN-LAST:event_jButton5ActionPerformed
 
     private void jButton6ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton6ActionPerformed
+        this.pause();
         this.stop();
         this.initializeWorld();
         this.start();
     }//GEN-LAST:event_jButton6ActionPerformed
 
-    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_jButton1ActionPerformed
+    private void jCheckBox2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBox2ActionPerformed
+        if (this.jCheckBox2.isSelected()) {
+            this.editable = true;
+        } else {
+            this.editable = false;
+        }
+    }//GEN-LAST:event_jCheckBox2ActionPerformed
 
     public void updateLabels() {
         Vector2 v = circle.getLinearVelocity();
@@ -439,8 +597,10 @@ public final class Window extends javax.swing.JFrame {
         this.jLabel8.setText("" + (float) v.x);
         this.jLabel9.setText("" + (float) v.y);
 
-        Vector2 a = new Vector2(0.0,0.0);
-        Vector2 p = circle.getLocalPoint(a);
+        Vector2 a = new Vector2(0.0, 0.0);
+        //Vector2 p = circle.getLocalPoint(a);
+        Vector2 p = circle.getWorldCenter();
+
         this.jLabel12.setText("" + (float) p.x);
         this.jLabel13.setText("" + (float) p.y);
         //System.out.println();
@@ -486,11 +646,12 @@ public final class Window extends javax.swing.JFrame {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private java.awt.Canvas canvas1;
-    private javax.swing.JButton jButton1;
     private javax.swing.JButton jButton2;
     private javax.swing.JButton jButton5;
     private javax.swing.JButton jButton6;
     private javax.swing.JCheckBox jCheckBox1;
+    private javax.swing.JCheckBox jCheckBox2;
+    private javax.swing.JCheckBox jCheckBox3;
     private javax.swing.JComboBox<String> jComboBox1;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel10;
