@@ -12,6 +12,7 @@ import java.awt.RenderingHints;
 import java.awt.Toolkit;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelEvent;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferStrategy;
 import java.util.ArrayList;
@@ -34,20 +35,58 @@ import org.dyn4j.geometry.Vector2;
 /**
  *
  * @author jerson
+ *
+ * @version 1.2.0
+ *
  */
 public final class Window extends javax.swing.JFrame {
 
-    private static final long serialVersionUID = 5663760293144882635L;
+    /**
+     * The pixels per meter scale factor
+     */
     public static final double SCALE = 45.0;
+    /**
+     * The conversion factor from nano to base
+     */
     public static final double NANO_TO_BASE = 1.0e9;
-    protected final double scale;
+    /**
+     * The pixels per meter scale factor
+     */
+    protected double scale;
+    /**
+     * un objeto
+     */
     private SimulationBody circle;
+    /**
+     * The dynamics engine
+     */
     protected World world;
+    /**
+     * True if the simulation is exited
+     */
     protected boolean stopped;
+    /**
+     * The time stamp for the last iteration
+     */
     protected long last;
+    /**
+     * indica si es posible seleccionar objetos en pantalla
+     *
+     */
     private boolean seleccionable;
+    /**
+     * indica si es posible modificar manualmente los objetos en pantalla
+     */
     private boolean editable;
+
+    /**
+     * True if the simulation is paused
+     */
     private boolean paused;
+
+    /**
+     * the selected objet
+     */
     SimulationBody selected;
 
     /**
@@ -70,6 +109,13 @@ public final class Window extends javax.swing.JFrame {
      */
     private List<DetectResult> results = new ArrayList<DetectResult>();
 
+    /**
+     * A custom mouse adapter for listening for mouse clicks.
+     *
+     * @author jerson ortiz
+     * @version 3.2.0
+     * @since 3.2.0
+     */
     private final class CustomMouseAdapter extends MouseAdapter {
 
         @Override
@@ -89,6 +135,11 @@ public final class Window extends javax.swing.JFrame {
             super.mouseDragged(e);
         }
 
+        @Override
+        public void mouseWheelMoved(MouseWheelEvent e) {
+
+        }
+
     }
 
     public Window() {
@@ -99,11 +150,12 @@ public final class Window extends javax.swing.JFrame {
         this.canvas1.addMouseMotionListener(ml);
         this.canvas1.addMouseWheelListener(ml);
         this.canvas1.addMouseListener(ml);
-
         this.initializeWorld();
-
     }
 
+    /**
+     * Creates game objects and adds them to the world.
+     */
     protected void initializeWorld() {
 
         this.world = new World();
@@ -137,6 +189,11 @@ public final class Window extends javax.swing.JFrame {
 
     }
 
+    /**
+     * Start active rendering the simulation.
+     * <p>
+     * This should be called after the JFrame has been shown.
+     */
     public void start() {
         this.stopped = false;
 
@@ -155,6 +212,10 @@ public final class Window extends javax.swing.JFrame {
         thread.start();
     }
 
+    /**
+     * The method calling the necessary methods to update the game, graphics,
+     * and poll for input.
+     */
     protected void gameLoop() {
 
         Graphics2D g = (Graphics2D) this.canvas1.getBufferStrategy().getDrawGraphics();
@@ -184,6 +245,14 @@ public final class Window extends javax.swing.JFrame {
         Toolkit.getDefaultToolkit().sync();
     }
 
+    /**
+     * Performs any transformations to the graphics.
+     * <p>
+     * By default, this method puts the origin (0,0) in the center of the window
+     * and points the positive y-axis pointing up.
+     *
+     * @param g the graphics object to render to
+     */
     protected void transform(Graphics2D g) {
         final int w = this.canvas1.getWidth();
         final int h = this.canvas1.getHeight();
@@ -193,6 +262,11 @@ public final class Window extends javax.swing.JFrame {
         g.transform(move);
     }
 
+    /**
+     * Clears the previous frame.
+     *
+     * @param g the graphics object to render to
+     */
     protected void clear(Graphics2D g) {
         final int w = this.canvas1.getWidth();
         final int h = this.canvas1.getHeight();
@@ -200,6 +274,12 @@ public final class Window extends javax.swing.JFrame {
         g.fillRect(-w / 2, -h / 2, w, h);
     }
 
+    /**
+     * Updates the world.
+     *
+     * @param g the graphics object to render to
+     * @param elapsedTime the elapsed time from the last update
+     */
     protected void update(Graphics2D g, double elapsedTime) {
         this.world.update(elapsedTime);
         if (this.editable) {
@@ -208,11 +288,13 @@ public final class Window extends javax.swing.JFrame {
 
         this.seleccionar();
         this.mover();
-
         this.updateLabels();
 
     }
 
+    /*
+    mueve el objeto seleccionado al punto en que esta el mouse
+     */
     protected void mover() {
         if (this.selected != null & this.point != null) {
             // convert from screen space to world space
@@ -224,9 +306,14 @@ public final class Window extends javax.swing.JFrame {
             tx.translate(x, y);
             this.selected.setTransform(tx);
             this.point = null;
+        } else {
+            this.selected = null;
         }
     }
 
+    /*
+    añade un objeto
+     */
     protected void addObjet() {
         if (this.point != null) {
             double x = (this.point.getX() - this.canvas1.getWidth() / 2.0) / this.SCALE;
@@ -241,6 +328,9 @@ public final class Window extends javax.swing.JFrame {
         }
     }
 
+    /*
+    permite seleccionar un objeto de la pantalla
+     */
     protected void seleccionar() {
 
         final double scale = Window.SCALE;
@@ -282,6 +372,12 @@ public final class Window extends javax.swing.JFrame {
         }
     }
 
+    /**
+     * Renders the example.
+     *
+     * @param g the graphics object to render to
+     * @param elapsedTime the elapsed time from the last update
+     */
     protected void render(Graphics2D g, double elapsedTime) {
 
         g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
@@ -303,6 +399,13 @@ public final class Window extends javax.swing.JFrame {
 
     }
 
+    /**
+     * Renders the body.
+     *
+     * @param g the graphics object to render to
+     * @param elapsedTime the elapsed time from the last update
+     * @param body the body to render
+     */
     protected void render(Graphics2D g, double elapsedTime, SimulationBody body) {
         // draw the object
         // body.render(g, Window.SCALE);
@@ -572,7 +675,9 @@ public final class Window extends javax.swing.JFrame {
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-
+/*
+    activa y desactiva la gravedad
+     */
     private void jCheckBox1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBox1ActionPerformed
         if (this.jCheckBox1.isSelected()) {
             this.world.setGravity(World.EARTH_GRAVITY);
@@ -582,9 +687,14 @@ public final class Window extends javax.swing.JFrame {
     }//GEN-LAST:event_jCheckBox1ActionPerformed
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
+        /*
+        inicia la simulacion
+         */
         this.start();
     }//GEN-LAST:event_jButton2ActionPerformed
-
+    /*
+    pausa la simulacion
+     */
     private void jButton5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton5ActionPerformed
         if (isPaused()) {
             this.resume();
@@ -592,7 +702,9 @@ public final class Window extends javax.swing.JFrame {
             this.pause();
         }
     }//GEN-LAST:event_jButton5ActionPerformed
-
+    /*
+    reinicia la simulacion
+     */
     private void jButton6ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton6ActionPerformed
         this.pause();
         this.stop();
@@ -600,6 +712,9 @@ public final class Window extends javax.swing.JFrame {
         this.start();
     }//GEN-LAST:event_jButton6ActionPerformed
 
+    /*
+    habilita la opcion de añadir o remover objetos
+     */
     private void jCheckBox2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBox2ActionPerformed
         if (this.jCheckBox2.isSelected()) {
             this.editable = true;
