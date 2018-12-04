@@ -17,7 +17,6 @@ import java.awt.geom.AffineTransform;
 import java.awt.image.BufferStrategy;
 import java.util.ArrayList;
 import java.util.List;
-import model.util.GameObject;
 import model.util.Graphics2DRenderer;
 import model.util.SimulationBody;
 import org.dyn4j.collision.Fixture;

@@ -9,12 +9,7 @@ import org.dyn4j.dynamics.Body;
 import org.dyn4j.dynamics.BodyFixture;
 import org.dyn4j.geometry.Convex;
 
-/**
- * Custom Body class to add drawing functionality.
- * @author William Bittle
- * @version 3.2.1
- * @since 3.0.0
- */
+
 public class SimulationBody extends Body {
 	/** The color of the object */
 	protected Color color;
@@ -73,18 +68,6 @@ public class SimulationBody extends Body {
 			this.renderFixture(g, scale, fixture, color);
 		}
 		
-		// draw a center point
-	//	Ellipse2D.Double ce = new Ellipse2D.Double(
-	//			this.getLocalCenter().x * scale - pr * 0.5,
-	//			this.getLocalCenter().y * scale - pr * 0.5,
-	//			pr,
-	//			pr);
-	//	g.setColor(Color.WHITE);
-	//	g.fill(ce);
-	//	g.setColor(Color.DARK_GRAY);
-	//	g.draw(ce);
-		
-		// set the original transform
 		g.setTransform(ot);
 	}
 	
