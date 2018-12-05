@@ -19,20 +19,16 @@ import java.util.ArrayList;
 import java.util.List;
 import model.util.Graphics2DRenderer;
 import model.util.SimulationBody;
-import org.dyn4j.collision.Fixture;
-import org.dyn4j.dynamics.Body;
+import model.util.Utilities;
 import org.dyn4j.dynamics.BodyFixture;
 import org.dyn4j.dynamics.DetectResult;
 import org.dyn4j.dynamics.World;
-import org.dyn4j.geometry.Circle;
 import org.dyn4j.geometry.Convex;
 import org.dyn4j.geometry.Geometry;
 import org.dyn4j.geometry.MassType;
 import org.dyn4j.geometry.Mass;
-import org.dyn4j.geometry.Polygon;
 import org.dyn4j.geometry.Rectangle;
 import org.dyn4j.geometry.Transform;
-import org.dyn4j.geometry.Triangle;
 import org.dyn4j.geometry.Vector2;
 
 /**
@@ -181,7 +177,7 @@ public final class Window extends javax.swing.JFrame {
         // this.world.setGravity(World.EARTH_GRAVITY);
         this.world.setGravity(World.ZERO_GRAVITY);
 
-        //desactiva el autosleep de ese m
+        //desactiva el autosleep 
         this.world.getSettings().setAutoSleepingEnabled(false);
 
         Rectangle floorRect = new Rectangle(15.0, 1.0);
@@ -189,30 +185,9 @@ public final class Window extends javax.swing.JFrame {
         BodyFixture f = new BodyFixture(floorRect);
         f.setFriction(0.0);
         floor.addFixture(f);
-
         floor.setMass(MassType.INFINITE);
-
         floor.translate(0.0, -5.0);
         this.world.addBody(floor);
-
-        Circle cirShape = new Circle(0.5);
-        this.circle = new SimulationBody();
-        circle.addFixture(cirShape);
-        circle.setMass(MassType.NORMAL);
-        circle.translate(-4.0, 2.0);
-        Vector2 v = circle.getMass().getCenter();
-        double i = circle.getMass().getInertia();
-        Mass m = new Mass(v, 1.0, i);
-        circle.setMass(m);
-        System.out.println(circle.getMass().getMass());
-
-        //  circle.setLinearVelocity(new Vector2(5, 4.8));
-        // test adding some force
-        //   circle.applyForce(new Vector2(0.0, 9.8));
-        // set some linear damping to simulate rolling friction
-        // circle.setLinearDamping(0.05);
-        this.world.addBody(circle);
-
     }
 
     /**
@@ -243,28 +218,20 @@ public final class Window extends javax.swing.JFrame {
      * and poll for input.
      */
     protected void gameLoop() {
-
         Graphics2D g = (Graphics2D) this.canvas1.getBufferStrategy().getDrawGraphics();
-
         this.transform(g);
         this.clear(g);
-
         long time = System.nanoTime();
         long diff = time - this.last;
         this.last = time;
         double elapsedTime = diff / NANO_TO_BASE;
-
         this.render(g, elapsedTime);
-
         if (!paused) {
             //    System.out.println(""+this.paused);
             this.update(g, elapsedTime);
         }
-
         g.dispose();
-
         BufferStrategy strategy = this.canvas1.getBufferStrategy();
-
         if (!strategy.contentsLost()) {
             strategy.show();
         }
@@ -308,126 +275,68 @@ public final class Window extends javax.swing.JFrame {
      */
     protected void update(Graphics2D g, double elapsedTime) {
         this.world.update(elapsedTime);
-
-        if (this.editable) {
-            this.addObjet();
-        }
-
-        this.seleccionar();
-        if (this.puedemover) {
-            this.mover();
-        }
+        this.oper();
         this.updateLabels();
-
     }
 
-    /*
-    mueve el objeto seleccionado al punto en que esta el mouse
+    /**
+     * llama cuando sea necesario a los metodos seleccionar , mover o añadir
+     * objeto
+     *
      */
-    protected void mover() {
-        if (this.selected != null & this.point != null) {
-            // convert from screen space to world space
-            double x = (this.point.getX() - this.canvas1.getWidth() / 2.0) / this.scale;
-            double y = -(this.point.getY() - this.canvas1.getHeight() / 2.0) / this.scale;
-
-            // reset the transform of the controller body
-            Transform tx = new Transform();
-            tx.translate(x, y);
-            this.selected.setTransform(tx);
-            //  this.point = null;
+    protected void oper() {
+        this.results.clear();
+        if (this.point != null) {
+            Vector2 v = Utilities.pixelToM(this.point, this.canvas1.getWidth(), this.canvas1.getHeight(), this.scale);
+            this.seleccionar(v.x, v.y);
+            if (this.editable) {
+                this.addObjet(v.x, v.y);
+            }
+            if (this.puedemover) {
+                if (this.selected != null) {
+                    this.mover(v.x, v.y);
+                }
+            }
         } else {
             this.selected = null;
         }
     }
 
-    /*
-    añade un objeto
+    /**
+     * permite seleccionar un objeto de la pantalla
      */
-    protected void addObjet() {
-        if (this.point != null) {
-            double x = (this.point.getX() - this.canvas1.getWidth() / 2.0) / this.SCALE;
-            double y = -(this.point.getY() - this.canvas1.getHeight() / 2.0) / this.SCALE;
-            Vector2 v = null;
-            double i;
-            Mass m = null;
-            BodyFixture f = null;
-            SimulationBody no = new SimulationBody();
-            switch (this.jcto.getSelectedIndex()) {
-                case 0:
-                    Circle cirShape = new Circle(0.5);
-                    f = new BodyFixture(cirShape);
-                    break;
-                case 1:
-                    Rectangle r = Geometry.createSquare(0.5);
-                    f = new BodyFixture(r);
-                    break;
-                case 2:
-                    Triangle tr = Geometry.createTriangle(new Vector2(0.0, 0.5), new Vector2(-0.5, -0.5), new Vector2(0.5, -0.5));
-                    f = new BodyFixture(tr);
-                    break;
-                case 3:
-                    Polygon po = Geometry.createUnitCirclePolygon(5, 0.5);
-                    f = new BodyFixture(po);
-                    break;
-                case 4:
-                    Polygon he = Geometry.createUnitCirclePolygon(6, 0.5);
-                    f = new BodyFixture(he);
-                    break;
-            }
-            f.setFriction(0.0);
-            no.addFixture(f);
-            no.translate(x, y);
-            no.setMass(MassType.NORMAL);
-            //asigna masa de 1 kg
-            no.setMass(new Mass(no.getMass().getCenter(), 1.0, no.getMass().getInertia()));
-            this.world.addBody(no);
-
-        }
-
-    }
-
-    /*
-    permite seleccionar un objeto de la pantalla
-     */
-    protected void seleccionar() {
-
-        final double scale = Window.SCALE;
-        this.results.clear();
-
+    protected void seleccionar(double x, double y) {
         // we are going to use a circle to do our picking
         Convex convex = Geometry.createCircle(Window.PICKING_RADIUS);
         Transform transform = new Transform();
-        double x = 0;
-        double y = 0;
+        this.worldPoint.set(x, y);
+        transform.translate(x, y);
+        this.world.detect(convex, transform, null, false, false, false, this.results);
+    }
 
-        // convert the point from panel space to world space
-        if (this.point != null) {
-            // convert the screen space point to world space
-            x = (this.point.getX() - this.canvas1.getWidth() * 0.5) / scale;
-            y = -(this.point.getY() - this.canvas1.getHeight() * 0.5) / scale;
-            this.worldPoint.set(x, y);
+    /**
+     * añade un objeto
+     */
+    protected void addObjet(double x, double y) {
+        SimulationBody no = new SimulationBody();
+        BodyFixture f = Utilities.createBody(this.jcto.getSelectedIndex());
+        f.setFriction(0.0);
+        no.addFixture(f);
+        no.translate(x, y);
+        no.setMass(MassType.NORMAL);
+        //asigna masa de 1 kg
+        no.setMass(new Mass(no.getMass().getCenter(), 1.0, no.getMass().getInertia()));
+        this.world.addBody(no);
+    }
 
-            // set the transform
-            transform.translate(x, y);
-
-            // detect bodies under the mouse pointer
-            this.world.detect(
-                    convex,
-                    transform,
-                    null, // no, don't filter anything using the Filters 
-                    false, // include sensor fixtures 
-                    false, // include inactive bodies
-                    false, // we don't need collision info 
-                    this.results);
-
-            // you could also iterate over the bodies and do a point in body test
-//			for (int i = 0; i < this.world.getBodyCount(); i++) {
-//				Body b = this.world.getBody(i);
-//				if (b.contains(new Vector2(x, y))) {
-//					// record this body
-//				}
-//			}
-        }
+    /**
+     * mueve el objeto seleccionado al punto en que esta el mouse
+     */
+    protected void mover(double x, double y) {
+        // reset the transform of the controller body
+        Transform tx = new Transform();
+        tx.translate(x, y);
+        this.selected.setTransform(tx);
     }
 
     /**
@@ -814,19 +723,21 @@ public final class Window extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_jCheckBox3ActionPerformed
 
-    
-    public void resestablecervarables(){
-             this.obj = new objConfig();
+    public void resestablecervarables() {
+        this.obj = new objConfig();
         this.scale = Window.SCALE;
         this.editable = false;
         this.puedemover = false;
+        this.jCheckBox3.setSelected(false);
+        this.jCheckBox2.setSelected(false);
+        this.jCheckBox1.setSelected(false);
         MouseAdapter ml = new CustomMouseAdapter();
         this.canvas1.addMouseMotionListener(ml);
         this.canvas1.addMouseWheelListener(ml);
         this.canvas1.addMouseListener(ml);
-        
+
     }
-    
+
     public void updateLabels() {
 
         if (this.movible != null) {
@@ -835,8 +746,6 @@ public final class Window extends javax.swing.JFrame {
             this.jLabel8.setText("" + (float) Math.round(v.x));
             this.jLabel9.setText("" + (float) Math.round(v.y));
 
-            Vector2 a = new Vector2(0.0, 0.0);
-            //Vector2 p = circle.getLocalPoint(a);
             Vector2 p = movible.getWorldCenter();
 
             this.jLabel12.setText("" + (float) Math.round(p.x));
